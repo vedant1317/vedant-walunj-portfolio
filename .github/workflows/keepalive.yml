@@ -1,0 +1,20 @@
+# Pings /api/health every 10 minutes so the free-tier
+# server never idles long enough to spin down (Render sleeps after ~15 min of no traffic).
+# Note: GitHub pauses scheduled workflows if the repo has no activity for 60 days —
+# any commit re-enables them.
+name: Keep API awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API health endpoint
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://vedant-portfolio-api.onrender.com/api/health)
+          echo "Health endpoint returned HTTP $status"
+          test "$status" = "200"

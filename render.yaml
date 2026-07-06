@@ -1,0 +1,16 @@
+# Render Blueprint — creates the API service when you connect this repo at
+# https://dashboard.render.com/blueprints (New > Blueprint > select repo).
+services:
+  - type: web
+    name: vedant-portfolio-api
+    runtime: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: API_PORT
+        value: 10000
+      - key: MONGODB_URI
+        sync: false # set in the Render dashboard — use your MongoDB Atlas connection string
