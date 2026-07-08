@@ -1,7 +1,9 @@
-# Pings /api/health every 10 minutes so the free-tier
-# server never idles long enough to spin down (Render sleeps after ~15 min of no traffic).
-# Note: GitHub pauses scheduled workflows if the repo has no activity for 60 days —
-# any commit re-enables them.
+# Wakes the Render free-tier API and holds it warm.
+#
+# NOTE: GitHub's scheduled cron is best-effort and often delayed 30-120 min under
+# load, so this alone can NOT keep the service awake 24/7. The reliable keep-alive
+# is an external pinger (cron-job.org) hitting /api/health every 5 min — see README.
+# This workflow is a backup and a manual "wake it now" button (Actions > Run workflow).
 name: Keep API awake
 
 on:
@@ -13,8 +15,26 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping API health endpoint
+      - name: Wake the API (tolerating cold start) and hold it warm
         run: |
-          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 60 https://vedant-portfolio-api.onrender.com/api/health)
-          echo "Health endpoint returned HTTP $status"
-          test "$status" = "200"
+          URL="https://vedant-portfolio-api.onrender.com/api/health"
+
+          wake() {
+            # Cold start can take ~50-60s; retry up to ~2.5 min before giving up.
+            for attempt in $(seq 1 10); do
+              code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL" || echo 000)
+              echo "wake attempt $attempt -> HTTP $code"
+              [ "$code" = "200" ] && return 0
+              sleep 15
+            done
+            return 1
+          }
+
+          wake || { echo "::error::API never returned 200"; exit 1; }
+
+          # Keep it warm across this run so a single firing covers ~8 min.
+          for t in 4 8; do
+            sleep 240
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 90 "$URL" || echo 000)
+            echo "keep-warm +${t}m -> HTTP $code"
+          done
