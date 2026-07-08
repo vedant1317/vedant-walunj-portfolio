@@ -26,7 +26,19 @@ Optional: set `MONGODB_URI` in `server/.env` to persist contact messages.
 | `client/` | Vercel | `vercel` from `client/`; `vercel.json` rewrites `/api/*` to the Render API |
 | `server/` | Render | Connect repo as a Blueprint — `render.yaml` provisions `vedant-portfolio-api` (free plan) |
 | MongoDB | Atlas | Free M0 cluster; set `MONGODB_URI` on the Render service |
-| Keep-alive | GitHub Actions | `.github/workflows/keepalive.yml` pings `/api/health` every 10 min so the free dyno never sleeps |
+| Keep-alive | GitHub Actions | `.github/workflows/keepalive.yml` wakes `/api/health` and holds it warm ~8 min per run (best-effort — see below) |
+
+### Keeping the free API awake
+
+Render's free instance sleeps after ~15 min of no traffic (first request then cold-starts ~50s).
+The site is unaffected either way — it ships with fallback data ([`client/src/data/fallbackProfile.js`](client/src/data/fallbackProfile.js)),
+so pages always render and only the live-data calls wait on a wake.
+
+`keepalive.yml` helps but can't guarantee 24/7: GitHub's scheduled cron is best-effort and
+often delayed 30–120 min, so the API isn't warm the whole time. For true 24/7 warmth, add an
+external pinger hitting `https://vedant-portfolio-api.onrender.com/api/health` every 5 min
+([cron-job.org](https://cron-job.org) or [UptimeRobot](https://uptimerobot.com), both free),
+or upgrade the Render service to a paid instance (never sleeps).
 
 Content lives in one place: [`server/data/profile.js`](server/data/profile.js)
 (mirrored in [`client/src/data/fallbackProfile.js`](client/src/data/fallbackProfile.js) for API-down resilience).
