@@ -14,3 +14,5 @@ services:
         value: 10000
       - key: MONGODB_URI
         sync: false # set in the Render dashboard — use your MongoDB Atlas connection string
+      - key: ADMIN_TOKEN
+        sync: false # set in the Render dashboard — a long random string; required to view /api/messages

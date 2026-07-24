@@ -1,11 +1,16 @@
 import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring } from "framer-motion";
+import ThemeToggle from "./ThemeToggle.jsx";
 
 const LINKS = ["experience", "work", "code", "skills", "contact"];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [time, setTime] = useState("");
+  const cmdkLabel =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent)
+      ? "⌘K"
+      : "Ctrl K";
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 140, damping: 26, mass: 0.4 });
 
@@ -59,6 +64,15 @@ export default function Navbar() {
           letter-spacing: 0.08em; font-variant-numeric: tabular-nums;
         }
         .nb-clock span { color: var(--acid); }
+        .nb-cmdk {
+          display: inline-flex; align-items: center;
+          font-family: var(--font-mono); font-size: 0.66rem; letter-spacing: 0.08em;
+          color: var(--paper-dim); background: transparent;
+          border: 1px solid var(--line); padding: 5px 9px; cursor: pointer;
+          transition: color 0.25s ease, border-color 0.25s ease;
+        }
+        .nb-cmdk:hover { color: var(--acid); border-color: var(--acid); }
+        @media (max-width: 820px) { .nb-cmdk { display: none; } }
         .nb-burger { display: none; background: none; border: none; color: var(--paper); font-size: 1.3rem; cursor: pointer; }
         .nb-progress {
           position: absolute; left: 0; right: 0; bottom: -1px; height: 2px;
@@ -96,6 +110,14 @@ export default function Navbar() {
                 </li>
               ))}
             </ul>
+            <button
+              className="nb-cmdk"
+              onClick={() => window.dispatchEvent(new Event("cmdk:open"))}
+              aria-label="Open command palette"
+            >
+              {cmdkLabel}
+            </button>
+            <ThemeToggle />
             <span className="nb-clock">
               Mumbai <span>{time}</span> IST
             </span>

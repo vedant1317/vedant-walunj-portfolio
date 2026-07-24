@@ -1,26 +1,9 @@
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import Magnetic from "./Magnetic.jsx";
+import KineticText from "./KineticText.jsx";
+import anime from "../lib/anime.js";
 import { GitHubIcon, LinkedInIcon, LeetCodeIcon, MailIcon } from "./icons.jsx";
-
-// Staggered letter reveal for the display name.
-function SplitReveal({ text, delay = 0 }) {
-  return (
-    <span style={{ display: "inline-block", overflow: "hidden", verticalAlign: "bottom" }}>
-      {text.split("").map((ch, i) => (
-        <motion.span
-          key={i}
-          style={{ display: "inline-block", whiteSpace: "pre" }}
-          initial={{ y: "110%", rotate: 6 }}
-          animate={{ y: "0%", rotate: 0 }}
-          transition={{ delay: delay + i * 0.035, duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
-        >
-          {ch}
-        </motion.span>
-      ))}
-    </span>
-  );
-}
 
 // Flipping serif word — replaces the typewriter.
 function WordFlip({ words }) {
@@ -54,6 +37,49 @@ export default function Hero({ profile }) {
   const yMeta = useTransform(scrollY, [0, 600], [0, -30]);
   const first = profile.name.split(" ")[0].toUpperCase();
   const last = profile.name.split(" ")[1].toUpperCase();
+  const heroRef = useRef(null);
+  const reduced = useReducedMotion();
+
+  // anime.js timeline choreographs the supporting hero elements in around the
+  // kinetic name. Robust: elements are visible by default, we only hide-then-
+  // reveal when the page is actually visible and motion is allowed.
+  useLayoutEffect(() => {
+    const root = heroRef.current;
+    if (!root) return;
+    const els = root.querySelectorAll(".hero-avail, .hero-role-line, .socials-inline, .hero-foot");
+    const show = () => els.forEach((el) => {
+      el.style.opacity = "1";
+      el.style.transform = "none";
+    });
+    if (reduced || typeof anime !== "function") {
+      show();
+      return;
+    }
+
+    let tl;
+    const play = () => {
+      els.forEach((el) => (el.style.opacity = "0"));
+      tl = anime.timeline({ easing: "easeOutExpo", complete: show });
+      tl.add({ targets: root.querySelectorAll(".hero-role-line"), opacity: [0, 1], translateY: [24, 0], duration: 900 }, 250)
+        .add({ targets: root.querySelectorAll(".hero-avail"), opacity: [0, 1], translateY: [-10, 0], duration: 700 }, "-=700")
+        .add({ targets: root.querySelectorAll(".socials-inline"), opacity: [0, 1], translateX: [16, 0], duration: 700 }, "-=350")
+        .add({ targets: root.querySelectorAll(".hero-foot"), opacity: [0, 1], translateY: [14, 0], duration: 700 }, "-=550");
+    };
+
+    if (document.hidden) {
+      show();
+      const onVis = () => {
+        if (!document.hidden) {
+          document.removeEventListener("visibilitychange", onVis);
+          play();
+        }
+      };
+      document.addEventListener("visibilitychange", onVis);
+      return () => document.removeEventListener("visibilitychange", onVis);
+    }
+    play();
+    return () => tl && tl.pause();
+  }, [reduced]);
 
   return (
     <>
@@ -113,61 +139,41 @@ export default function Hero({ profile }) {
           .hero-name .row2 .socials-inline { display: none; }
         }
       `}</style>
-      <header className="hero" id="top">
+      <header className="hero" id="top" ref={heroRef}>
         <div className="container">
           <motion.div className="hero-top" style={{ y: yMeta }}>
-            <motion.p
-              className="hero-avail"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.1, duration: 0.8 }}
-            >
+            <p className="hero-avail">
               <span className="dot" /> Open to opportunities — Mumbai / Remote
-            </motion.p>
-            <motion.p
-              className="hero-role-line"
-              initial={{ opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            >
+            </p>
+            <p className="hero-role-line">
               Software engineer at the intersection of{" "}
               <WordFlip words={profile.roles} /> — currently Technical Intern @ ARCON,
               B.Tech IT @ KJ Somaiya (9.55 CGPA).
-            </motion.p>
+            </p>
           </motion.div>
         </div>
         <motion.div className="container" style={{ y: yTitle }}>
           <h1 className="hero-name">
-            <SplitReveal text={first} delay={0.15} />
+            <KineticText text={first} delay={150} />
             <div className="row2">
-              <SplitReveal text={last} delay={0.45} />
-              <motion.div
-                className="socials-inline"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.3, duration: 0.7 }}
-              >
+              <KineticText text={last} delay={450} />
+              <div className="socials-inline">
                 <a href={profile.links.github} target="_blank" rel="noopener noreferrer" aria-label="GitHub"><GitHubIcon /></a>
                 <a href={profile.links.linkedin} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"><LinkedInIcon /></a>
                 <a href={profile.links.leetcode} target="_blank" rel="noopener noreferrer" aria-label="LeetCode"><LeetCodeIcon /></a>
                 <a href={`mailto:${profile.email}`} aria-label="Email"><MailIcon /></a>
-              </motion.div>
+              </div>
             </div>
           </h1>
         </motion.div>
         <div className="container">
-          <motion.div
-            className="hero-foot"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 0.8 }}
-          >
+          <div className="hero-foot">
             <span>Scroll ↓</span>
             <div className="cta-row">
               <Magnetic><a className="btn btn-solid" href="#contact">Get in touch</a></Magnetic>
               <Magnetic><a className="btn" href="#work">Selected work</a></Magnetic>
             </div>
-          </motion.div>
+          </div>
         </div>
       </header>
     </>

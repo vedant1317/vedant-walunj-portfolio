@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "animejs": "^3.2.2",
     "framer-motion": "^12.4.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

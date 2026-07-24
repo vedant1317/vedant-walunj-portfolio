@@ -13,6 +13,13 @@
   --font-mono: "JetBrains Mono", monospace;
 }
 
+/* curated accent themes — swap the accent, keep the dark editorial base */
+:root[data-theme="coral"] { --acid: #d97757; --acid-dim: rgba(217, 119, 87, 0.14); }
+:root[data-theme="azure"] { --acid: #7cc4ff; --acid-dim: rgba(124, 196, 255, 0.14); }
+:root[data-theme="amber"] { --acid: #e9b949; --acid-dim: rgba(233, 185, 73, 0.14); }
+/* accent transitions smoothly on theme change */
+a, .btn, .nb-links a::after, .tt-sw { transition-property: color, background-color, border-color, box-shadow, transform; }
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 html { scroll-behavior: smooth; }
 body {
@@ -50,6 +57,14 @@ button { font-family: inherit; }
 .grid-rules::before { left: 33.33%; }
 .grid-rules::after { left: 66.66%; }
 @media (max-width: 720px) { .grid-rules::before, .grid-rules::after { display: none; } }
+
+/* kinetic display type (KineticText) */
+.kt { display: inline; }
+.kt-letter {
+  display: inline-block; will-change: transform;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.kt-inner { display: inline-block; will-change: transform, opacity; }
 
 /* film grain */
 .noise {

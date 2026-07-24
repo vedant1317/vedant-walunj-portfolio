@@ -10,6 +10,8 @@ import CodeStats from "./components/CodeStats.jsx";
 import Skills from "./components/Skills.jsx";
 import Education from "./components/Education.jsx";
 import AfterHours from "./components/AfterHours.jsx";
+import Guestbook from "./features/guestbook/Guestbook.jsx";
+import CommandPalette from "./features/command-palette/CommandPalette.jsx";
 import Contact from "./components/Contact.jsx";
 import Footer from "./components/Footer.jsx";
 import { fallbackProfile } from "./data/fallbackProfile.js";
@@ -19,6 +21,7 @@ export default function App() {
   const [github, setGithub] = useState(fallbackProfile.githubFallback);
   const [leetcode, setLeetcode] = useState(fallbackProfile.leetcodeFallback);
   const [letterboxd, setLetterboxd] = useState(fallbackProfile.letterboxdFallback);
+  const [monkeytype, setMonkeytype] = useState(fallbackProfile.monkeytypeFallback);
 
   useEffect(() => {
     const load = (url, set) =>
@@ -30,6 +33,7 @@ export default function App() {
     load("/api/github", setGithub);
     load("/api/leetcode", setLeetcode);
     load("/api/letterboxd", setLetterboxd);
+    load("/api/monkeytype", setMonkeytype);
   }, []);
 
   return (
@@ -47,10 +51,12 @@ export default function App() {
         <CodeStats leetcode={leetcode} github={github} links={profile.links} />
         <Skills skills={profile.skills} />
         <Education education={profile.education} achievements={profile.achievements} />
-        <AfterHours spotify={profile.spotify} letterboxd={letterboxd} />
+        <AfterHours spotify={profile.spotify} letterboxd={letterboxd} monkeytype={monkeytype} />
+        <Guestbook />
         <Contact email={profile.email} />
       </main>
       <Footer links={profile.links} />
+      <CommandPalette email={profile.email} links={profile.links} />
     </>
   );
 }

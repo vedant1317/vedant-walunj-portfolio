@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Messages — Admin</title>
+<style>
+  :root {
+    --ink: #101113;
+    --ink-2: #16181b;
+    --ink-3: #1d2024;
+    --line: rgba(236, 232, 223, 0.1);
+    --line-strong: rgba(236, 232, 223, 0.22);
+    --paper: #ece8df;
+    --paper-dim: #a39f94;
+    --acid: #d8f651;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    padding: 2.5rem 1.25rem;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 1.1rem; letter-spacing: 0.02em; margin: 0 0 1.5rem; color: var(--acid); }
+  .auth { display: flex; gap: 0.5rem; margin-bottom: 2rem; }
+  input {
+    flex: 1;
+    background: var(--ink-2);
+    border: 1px solid var(--line-strong);
+    color: var(--paper);
+    padding: 0.6rem 0.75rem;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+  }
+  button {
+    background: var(--acid);
+    color: var(--ink);
+    border: none;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.85; }
+  #status { font-size: 0.8rem; color: var(--paper-dim); margin-bottom: 1rem; min-height: 1.2em; }
+  .msg {
+    border: 1px solid var(--line);
+    background: var(--ink-2);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 0.9rem;
+  }
+  .msg-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.78rem;
+    color: var(--paper-dim);
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .msg-name { color: var(--paper); font-weight: 600; }
+  .msg-body { font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; }
+  .empty { color: var(--paper-dim); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>&gt; contact messages</h1>
+  <div class="auth">
+    <input id="token" type="password" placeholder="admin token" />
+    <button id="load">Load</button>
+  </div>
+  <div id="status"></div>
+  <div id="list"></div>
+</div>
+<script>
+  const tokenInput = document.getElementById("token");
+  const statusEl = document.getElementById("status");
+  const listEl = document.getElementById("list");
+  const saved = localStorage.getItem("admin_token");
+  if (saved) tokenInput.value = saved;
+
+  async function load() {
+    const token = tokenInput.value.trim();
+    if (!token) { statusEl.textContent = "enter a token"; return; }
+    localStorage.setItem("admin_token", token);
+    statusEl.textContent = "loading…";
+    listEl.innerHTML = "";
+    try {
+      const res = await fetch("/api/messages", { headers: { "x-admin-token": token } });
+      if (res.status === 401) { statusEl.textContent = "unauthorized — check token"; return; }
+      if (!res.ok) { statusEl.textContent = "failed to load"; return; }
+      const messages = await res.json();
+      statusEl.textContent = `${messages.length} message${messages.length === 1 ? "" : "s"}`;
+      if (!messages.length) {
+        listEl.innerHTML = '<p class="empty">no messages yet</p>';
+        return;
+      }
+      listEl.innerHTML = messages.map((m) => {
+        const when = new Date(m.createdAt).toLocaleString();
+        return `<div class="msg">
+          <div class="msg-head">
+            <span class="msg-name">${escapeHtml(m.name)} &lt;${escapeHtml(m.email)}&gt;</span>
+            <span>${when}</span>
+          </div>
+          <div class="msg-body">${escapeHtml(m.message)}</div>
+        </div>`;
+      }).join("");
+    } catch {
+      statusEl.textContent = "network error";
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  document.getElementById("load").addEventListener("click", load);
+  tokenInput.addEventListener("keydown", (e) => { if (e.key === "Enter") load(); });
+  if (saved) load();
+</script>
+</body>
+</html>

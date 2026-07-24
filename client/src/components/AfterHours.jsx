@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import Section from "./Section.jsx";
+import TypingTest from "../features/typing-test/TypingTest.jsx";
 
 // Spotify + Letterboxd — because commits aren't a personality.
 
@@ -35,9 +36,11 @@ function Eq({ delay = 0 }) {
   );
 }
 
-export default function AfterHours({ spotify, letterboxd }) {
+export default function AfterHours({ spotify, letterboxd, monkeytype }) {
   const distribution = letterboxd.distribution ?? [];
   const maxCount = Math.max(...distribution.map((d) => d.count), 1);
+  const mtPbs = monkeytype?.personalBests ?? [];
+  const maxWpm = Math.max(...mtPbs.map((p) => p.wpm), 1);
 
   return (
     <>
@@ -199,6 +202,39 @@ export default function AfterHours({ spotify, letterboxd }) {
           color: var(--paper-dim); text-align: right; margin-top: 4px;
         }
         .ah-footnote b { color: var(--acid); font-weight: 400; }
+
+        /* ---------- monkeytype: typing speed ---------- */
+        .mt-hero {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 28px; border-right: 1px solid var(--line);
+        }
+        @media (max-width: 900px) { .mt-hero { border-right: none; border-bottom: 1px solid var(--line); } }
+        .mt-wpm {
+          display: flex; align-items: flex-start;
+          font-size: clamp(3rem, 7vw, 4.6rem); font-weight: 700; line-height: 1;
+          letter-spacing: -0.03em; color: var(--paper);
+        }
+        .mt-caret {
+          display: inline-block; width: 0.09em; height: 0.86em; background: var(--acid);
+          margin-left: 6px; margin-top: 0.12em; animation: mtblink 1.05s steps(1) infinite;
+        }
+        @keyframes mtblink { 50% { opacity: 0; } }
+        .mt-wpm-l {
+          font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.12em;
+          text-transform: uppercase; color: var(--paper-dim); margin-top: 14px;
+        }
+        .mt-pbs { padding: 16px 32px; display: flex; flex-direction: column; justify-content: center; }
+        .mt-pb {
+          display: grid; grid-template-columns: 32px 1fr auto 42px; align-items: center; gap: 14px;
+          padding: 11px 0; border-top: 1px dashed var(--line);
+        }
+        .mt-pb:first-child { border-top: none; }
+        .mt-pb-t { font-family: var(--font-mono); font-size: 0.72rem; color: var(--acid); }
+        .mt-pb-bar { height: 6px; background: var(--ink-3); border: 1px solid var(--line); position: relative; overflow: hidden; }
+        .mt-pb-bar i { position: absolute; inset: 0; background: var(--acid); display: block; transform-origin: left; }
+        .mt-pb-wpm { font-size: 0.92rem; font-weight: 560; color: var(--paper); white-space: nowrap; }
+        .mt-pb-wpm em { font-family: var(--font-mono); font-style: normal; font-size: 0.6rem; color: var(--paper-dim); margin-left: 3px; }
+        .mt-pb-acc { font-family: var(--font-mono); font-size: 0.72rem; color: var(--paper-dim); text-align: right; }
       `}</style>
       <Section
         id="afterhours"
@@ -325,8 +361,72 @@ export default function AfterHours({ spotify, letterboxd }) {
           </div>
         </motion.div>
 
+        {/* --- Monkeytype --- */}
+        {monkeytype && (
+          <motion.div
+            className="ah-band"
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.1, duration: 0.75, ease: EASE }}
+          >
+            <div className="ah-head">
+              <span>Monkeytype — how fast I type</span>
+              <a href={monkeytype.url} target="_blank" rel="noopener noreferrer">@{monkeytype.username} ↗</a>
+            </div>
+            <div className="sp-body">
+              <div className="mt-hero">
+                <div className="mt-wpm">{monkeytype.bestWpm}<span className="mt-caret" /></div>
+                <div className="mt-wpm-l">wpm · personal best</div>
+              </div>
+              <div className="mt-pbs">
+                {mtPbs.map((p, i) => (
+                  <div className="mt-pb" key={p.label}>
+                    <span className="mt-pb-t">{p.label}</span>
+                    <span className="mt-pb-bar">
+                      <motion.i
+                        style={{ width: `${(p.wpm / maxWpm) * 100}%` }}
+                        initial={{ scaleX: 0 }}
+                        whileInView={{ scaleX: 1 }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.2 + i * 0.1, duration: 0.7, ease: EASE }}
+                      />
+                    </span>
+                    <span className="mt-pb-wpm">{p.wpm}<em>wpm</em></span>
+                    <span className="mt-pb-acc">{p.acc}%</span>
+                  </div>
+                ))}
+              </div>
+              <div className="sp-stats">
+                <div className="sp-stat">
+                  <div className="n">{monkeytype.completedTests}</div>
+                  <div className="l">tests completed</div>
+                </div>
+                <div className="sp-stat">
+                  <div className="n">{monkeytype.bestAcc}%</div>
+                  <div className="l">best accuracy</div>
+                </div>
+                <div className="sp-stat">
+                  <div className="n">{monkeytype.minutesTyping}</div>
+                  <div className="l">minutes typing</div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* --- Typing test --- */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.1, duration: 0.75, ease: EASE }}
+        >
+          <TypingTest pb={monkeytype?.bestWpm ?? 79} />
+        </motion.div>
+
         <p className="ah-footnote">
-          films pulled <b>live</b> from the diary — the ratings are final, the taste is not up for debate.
+          all of it pulled <b>live</b> — the films, the tracks, and yes, the typing speed.
         </p>
       </Section>
     </>

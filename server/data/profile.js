@@ -187,4 +187,17 @@ export const profile = {
     ],
   },
   leetcodeFallback: { total: 50, easy: 29, medium: 21, hard: 0, ranking: 2568693 },
+  monkeytypeFallback: {
+    url: "https://monkeytype.com/profile/vboitypes",
+    username: "vboitypes",
+    bestWpm: 79,
+    bestAcc: 99,
+    completedTests: 163,
+    minutesTyping: 43,
+    personalBests: [
+      { label: "15s", wpm: 79, acc: 99 },
+      { label: "30s", wpm: 78, acc: 98 },
+      { label: "60s", wpm: 69, acc: 96 },
+    ],
+  },
 };

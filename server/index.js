@@ -26,6 +26,48 @@ const messageSchema = new mongoose.Schema(
 );
 const Message = mongoose.model("Message", messageSchema);
 
+// Sketch-wall guestbook: visitors leave a small doodle. Strokes are stored as
+// normalized point-paths so they render at any tile size.
+const sketchSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true, maxlength: 40, default: "" },
+    color: { type: String, trim: true, maxlength: 12, default: "#d8f651" },
+    strokes: { type: Array, default: [] }, // [[[x,y],...], ...] with x,y in 0..1
+  },
+  { timestamps: true }
+);
+const Sketch = mongoose.model("Sketch", sketchSchema);
+const memorySketches = []; // dev fallback when Mongo is unavailable; starts empty each boot
+
+// Guards against garbage / abuse payloads. Returns a cleaned sketch or null.
+const HEX = /^#[0-9a-fA-F]{3,8}$/;
+function sanitizeSketch(body) {
+  if (!body || typeof body !== "object") return null;
+  if (typeof body.hp === "string" && body.hp.trim() !== "") return null; // honeypot
+  const strokes = Array.isArray(body.strokes) ? body.strokes : [];
+  if (strokes.length === 0 || strokes.length > 60) return null;
+  let points = 0;
+  const clean = [];
+  for (const s of strokes) {
+    if (!Array.isArray(s) || s.length < 2) continue;
+    const path = [];
+    for (const p of s) {
+      if (!Array.isArray(p) || p.length !== 2) continue;
+      const x = Number(p[0]);
+      const y = Number(p[1]);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      path.push([Math.min(1, Math.max(0, +x.toFixed(3))), Math.min(1, Math.max(0, +y.toFixed(3)))]);
+      if (++points > 2500) break;
+    }
+    if (path.length >= 2) clean.push(path);
+    if (points > 2500) break;
+  }
+  if (clean.length === 0) return null;
+  const name = typeof body.name === "string" ? body.name.trim().slice(0, 40) : "";
+  const color = typeof body.color === "string" && HEX.test(body.color.trim()) ? body.color.trim() : "#d8f651";
+  return { name, color, strokes: clean };
+}
+
 mongoose
   .connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
   .then(() => {
@@ -131,6 +173,39 @@ app.get("/api/letterboxd", async (_req, res) => {
   }
 });
 
+app.get("/api/monkeytype", async (_req, res) => {
+  try {
+    const data = await cached("monkeytype", async () => {
+      const r = await fetch("https://api.monkeytype.com/users/vboitypes/profile?isUid=false", {
+        headers: { Accept: "application/json" },
+      }).then((x) => x.json());
+      const d = r.data ?? {};
+      const ts = d.typingStats ?? {};
+      const time = d.personalBests?.time ?? {};
+      const personalBests = ["15", "30", "60", "120"]
+        .map((sec) => {
+          const arr = time[sec] ?? [];
+          if (!arr.length) return null;
+          const best = arr.reduce((a, b) => (b.wpm > a.wpm ? b : a));
+          return { label: `${sec}s`, wpm: Math.round(best.wpm), acc: Math.round(best.acc) };
+        })
+        .filter(Boolean);
+      return {
+        url: "https://monkeytype.com/profile/vboitypes",
+        username: "vboitypes",
+        bestWpm: personalBests.reduce((m, p) => Math.max(m, p.wpm), 0),
+        bestAcc: personalBests.reduce((m, p) => Math.max(m, p.acc), 0),
+        completedTests: ts.completedTests ?? 0,
+        minutesTyping: Math.round((ts.timeTyping ?? 0) / 60),
+        personalBests,
+      };
+    });
+    res.json(data);
+  } catch {
+    res.json(profile.monkeytypeFallback);
+  }
+});
+
 // --- API ---
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, db: dbReady ? "mongodb" : "memory" });
@@ -138,6 +213,49 @@ app.get("/api/health", (_req, res) => {
 
 app.get("/api/profile", (_req, res) => {
   res.json(profile);
+});
+
+function requireAdmin(req, res, next) {
+  const token = req.get("x-admin-token");
+  if (!process.env.ADMIN_TOKEN || token !== process.env.ADMIN_TOKEN) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  next();
+}
+
+app.get("/api/messages", requireAdmin, async (_req, res) => {
+  if (dbReady) {
+    const messages = await Message.find().sort({ createdAt: -1 });
+    return res.json(messages);
+  }
+  res.json([...memoryMessages].reverse());
+});
+
+app.get("/api/guestbook", async (_req, res) => {
+  try {
+    if (dbReady) {
+      const rows = await Sketch.find().sort({ createdAt: -1 }).limit(24).lean();
+      return res.json(rows.map((r) => ({ name: r.name, color: r.color, strokes: r.strokes, createdAt: r.createdAt })));
+    }
+    return res.json([...memorySketches].slice(-24).reverse());
+  } catch (err) {
+    console.error("[server] guestbook GET error:", err.message);
+    res.status(500).json({ error: "failed to load guestbook" });
+  }
+});
+
+app.post("/api/guestbook", async (req, res) => {
+  const clean = sanitizeSketch(req.body);
+  if (!clean) return res.status(400).json({ error: "invalid sketch" });
+  try {
+    const doc = { ...clean, createdAt: new Date() };
+    if (dbReady) await Sketch.create(clean);
+    else memorySketches.push(doc);
+    res.status(201).json({ ok: true, sketch: doc });
+  } catch (err) {
+    console.error("[server] guestbook POST error:", err.message);
+    res.status(500).json({ error: "failed to save sketch" });
+  }
 });
 
 app.post("/api/contact", async (req, res) => {

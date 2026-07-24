@@ -46,14 +46,14 @@ export default function Cursor() {
           }
           .cur-ring {
             position: fixed; top: -18px; left: -18px; width: 36px; height: 36px;
-            border: 1px solid rgba(216, 246, 81, 0.55);
+            border: 1px solid color-mix(in srgb, var(--acid) 55%, transparent);
             pointer-events: none; z-index: 9998;
-            transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s, border-radius 0.3s, background 0.3s, transform 0.05s linear;
+            transition: width 0.3s, height 0.3s, top 0.3s, left 0.3s, border-radius 0.3s, border-color 0.3s, background 0.3s, transform 0.05s linear;
             border-radius: 50%;
           }
           .cur-ring--on {
             width: 56px; height: 56px; top: -28px; left: -28px;
-            border-radius: 0; background: rgba(216, 246, 81, 0.08);
+            border-radius: 0; background: color-mix(in srgb, var(--acid) 8%, transparent);
           }
         }
         @media (pointer: coarse) { .cur-dot, .cur-ring { display: none; } }

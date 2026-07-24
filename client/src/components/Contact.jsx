@@ -2,8 +2,14 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import Magnetic from "./Magnetic.jsx";
 
+// Web3Forms access key — public by design (it lives in the client form) and
+// safe to commit. Get yours free at https://web3forms.com (enter your email).
+// Submissions are emailed straight to the address the key is registered to.
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY || "cd97b9e5-5d0b-4059-aed6-8d1c48d14c44";
+
 export default function Contact({ email }) {
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [botcheck, setBotcheck] = useState(""); // honeypot
   const [status, setStatus] = useState("idle"); // idle | sending | sent | error
 
   const onChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
@@ -12,12 +18,21 @@ export default function Contact({ email }) {
     e.preventDefault();
     setStatus("sending");
     try {
-      const res = await fetch("/api/contact", {
+      const res = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          access_key: WEB3FORMS_KEY,
+          name: form.name,
+          email: form.email,
+          message: form.message,
+          botcheck,
+          subject: `Portfolio — new message from ${form.name}`,
+          from_name: "Vedant Walunj Portfolio",
+        }),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message || "failed");
       setStatus("sent");
       setForm({ name: "", email: "", message: "" });
       setTimeout(() => setStatus("idle"), 4000);
@@ -92,7 +107,7 @@ export default function Contact({ email }) {
             >
               <p>
                 Opportunities, collaborations, or a conversation about backend systems and AI
-                agents — the form writes straight to MongoDB through the Express API.
+                agents — the form lands straight in my inbox.
               </p>
               <a className="ct-mail" href={`mailto:${email}`}>{email}</a>
             </motion.div>
@@ -119,6 +134,16 @@ export default function Contact({ email }) {
                 <textarea id="cf-message" name="message" rows="4" value={form.message} onChange={onChange} required />
                 <span className="ct-underline" />
               </div>
+              {/* honeypot — hidden from humans; bots that fill it are rejected */}
+              <input
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                value={botcheck}
+                onChange={(e) => setBotcheck(e.target.value)}
+                style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", opacity: 0 }}
+              />
               <Magnetic strength={0.15}>
                 <button className="btn btn-solid ct-submit" type="submit" disabled={status === "sending"}>
                   {status === "sending" ? "Sending…" : status === "sent" ? "Delivered ✓" : "Send message →"}
