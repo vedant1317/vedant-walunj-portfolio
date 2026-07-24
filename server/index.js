@@ -69,14 +69,18 @@ function sanitizeSketch(body) {
 }
 
 mongoose
-  .connect(MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
+  .connect(MONGODB_URI, { serverSelectionTimeoutMS: 12000 })
   .then(() => {
     dbReady = true;
     console.log("[server] MongoDB connected");
   })
-  .catch(() => {
-    console.log("[server] MongoDB unavailable — using in-memory message store");
+  .catch((err) => {
+    // log the real reason so failures are diagnosable in Render logs
+    console.error("[server] MongoDB unavailable — using in-memory store. Reason:", err.message);
   });
+
+mongoose.connection.on("connected", () => { dbReady = true; });
+mongoose.connection.on("disconnected", () => { dbReady = false; });
 
 // --- Live stats proxies (GitHub + LeetCode) with a 1h in-memory cache ---
 const cache = new Map();
