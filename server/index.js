@@ -7,7 +7,8 @@ import { profile } from "./data/profile.js";
 const app = express();
 // Use API_PORT, not PORT — dev launchers often inject PORT for the frontend.
 const PORT = process.env.API_PORT || 5001;
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/portfolio";
+const MONGODB_URI =
+  process.env.MONGODB_URI || process.env.MONGO_URI || "mongodb://127.0.0.1:27017/portfolio";
 
 app.use(cors());
 app.use(express.json());
