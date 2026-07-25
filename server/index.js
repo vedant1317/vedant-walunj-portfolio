@@ -71,9 +71,16 @@ function sanitizeSketch(body) {
 
 mongoose
   .connect(MONGODB_URI, { serverSelectionTimeoutMS: 12000 })
-  .then(() => {
+  .then(async () => {
     dbReady = true;
     console.log("[server] MongoDB connected");
+    // One-time cleanup: drop the doodle left behind while verifying persistence.
+    try {
+      const { deletedCount } = await Sketch.deleteMany({ name: /^persist-test$/i });
+      if (deletedCount) console.log(`[server] removed ${deletedCount} persist-test sketch(es)`);
+    } catch (err) {
+      console.error("[server] persist-test cleanup skipped:", err.message);
+    }
   })
   .catch((err) => {
     // log the real reason so failures are diagnosable in Render logs
